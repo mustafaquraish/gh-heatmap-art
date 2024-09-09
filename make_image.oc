@@ -1,0 +1,217 @@
+import std::time
+import std::fs
+import std::sdl::{ Color }
+
+struct Graph {
+    g: [[i32; 7]; 52]
+}
+
+def read_file(fname: str, g: &Graph) {
+    let sv = fs::read_file(fname).sv()
+    for let j = 0; j < 7; j++ {
+        let line = sv.chop_line()
+        for let i = 0; i < 52; i++ {
+            g.g[i][j] = line.chop_i32()
+        }
+    }
+}
+
+def save_file(g: &Graph, filename: str) {
+    let buf = std::buffer::Buffer::make()
+    for let j = 0; j < 7; j++ {
+        for let i = 0; i < 52; i++ {
+            if i > 0 {
+                buf.write_str(" ")
+            }
+            buf.write_str_f(`{g.g[i][j]:02d}`)
+        }
+        buf.write_str("\n")
+    }
+    fs::write_file(filename, buf)
+    buf.free()
+}
+
+import std::og
+
+// Generated from:
+//
+//     import colorsys
+//     H = [0, 27, 52, 110, 185, 240, 269, 316]
+//     def foo(i):
+//         if i == 0: return (0,0,0,255)
+//         if i < 7:
+//             c = i * 255 // 7
+//             return (c,c,c,255)
+//
+//         h = H[(i // 7) - 1]
+//         v = (i % 7) * 100 / 7 + 5
+//         rgb = colorsys.hls_to_rgb(h / 360, v / 100, 1)
+//         return tuple(int(c * 255) for c in rgb) + (255,)
+//     for i in range(9*7):
+//         print(f"Color{foo(i)},")
+
+const NUM_COLS: i32 = 63
+let mp: [Color; NUM_COLS] = [
+    Color(0, 0, 0, 255),
+    Color(36, 36, 36, 255),
+    Color(72, 72, 72, 255),
+    Color(109, 109, 109, 255),
+    Color(145, 145, 145, 255),
+    Color(182, 182, 182, 255),
+    Color(255, 255, 255, 255),
+    Color(25, 0, 0, 255),
+    Color(98, 0, 0, 255),
+    Color(171, 0, 0, 255),
+    Color(244, 0, 0, 255),
+    Color(255, 61, 61, 255),
+    Color(254, 134, 134, 255),
+    Color(255, 207, 207, 255),
+    Color(25, 11, 0, 255),
+    Color(98, 44, 0, 255),
+    Color(171, 77, 0, 255),
+    Color(244, 109, 0, 255),
+    Color(255, 148, 61, 255),
+    Color(254, 188, 134, 255),
+    Color(255, 228, 207, 255),
+    Color(25, 22, 0, 255),
+    Color(98, 85, 0, 255),
+    Color(171, 148, 0, 255),
+    Color(244, 211, 0, 255),
+    Color(255, 229, 61, 255),
+    Color(254, 238, 134, 255),
+    Color(255, 248, 207, 255),
+    Color(4, 25, 0, 255),
+    Color(16, 98, 0, 255),
+    Color(28, 171, 0, 255),
+    Color(40, 244, 0, 255),
+    Color(94, 255, 61, 255),
+    Color(154, 254, 134, 255),
+    Color(215, 255, 207, 255),
+    Color(0, 23, 25, 255),
+    Color(0, 90, 98, 255),
+    Color(0, 156, 171, 255),
+    Color(0, 223, 244, 255),
+    Color(61, 238, 255, 255),
+    Color(134, 244, 254, 255),
+    Color(207, 251, 255, 255),
+    Color(0, 0, 25, 255),
+    Color(0, 0, 98, 255),
+    Color(0, 0, 171, 255),
+    Color(0, 0, 244, 255),
+    Color(61, 61, 255, 255),
+    Color(134, 134, 254, 255),
+    Color(207, 207, 255, 255),
+    Color(12, 0, 25, 255),
+    Color(47, 0, 98, 255),
+    Color(82, 0, 171, 255),
+    Color(117, 0, 244, 255),
+    Color(155, 61, 255, 255),
+    Color(192, 134, 254, 255),
+    Color(230, 207, 255, 255),
+    Color(25, 0, 18, 255),
+    Color(98, 0, 72, 255),
+    Color(171, 0, 125, 255),
+    Color(244, 0, 178, 255),
+    Color(255, 61, 203, 255),
+    Color(254, 134, 222, 255),
+    Color(255, 207, 242, 255),
+]
+
+def ui(g: &Graph, img_file: str) {
+    og::clear(Color(0x18, 0x18, 0x18, 255))
+
+    let SQ_SIZE = 20i32
+    let PADDING = 5i32
+
+    for let i = 0i32; i < 52; i += 1 {
+        for let j = 0i32; j < 7; j += 1 {
+            let x = 50i32 + (i * SQ_SIZE + (i-1)*PADDING) as i32
+            let y = 50i32 + (j * SQ_SIZE + (j-1)*PADDING) as i32
+            let c = g.g[i][j]
+            assert c < NUM_COLS, `Invalid color at {i}, {j}: {c}`
+            let col = mp[c]
+            og::draw_rect(x, y, SQ_SIZE, SQ_SIZE, col)
+        }
+    }
+
+    let mouse = og::get_mouse_pos()
+    let cx = (mouse.x - 50) / (SQ_SIZE + PADDING)
+    let cy = (mouse.y - 50) / (SQ_SIZE + PADDING)
+
+    if 0i32 <= cx < 52i32 and 0i32 <= cy < 7 {
+
+        let tx = (50i32 + cx * (SQ_SIZE + PADDING)) - PADDING*2
+        let ty = (50i32 + cy * (SQ_SIZE + PADDING)) - PADDING*2
+
+        let len = SQ_SIZE + 2i32*PADDING
+        og::draw_line(tx, ty, tx+len, ty, og::colors::WHITE)
+        og::draw_line(tx, ty, tx, ty+len, og::colors::WHITE)
+        og::draw_line(tx+len, ty, tx+len, ty+len, og::colors::WHITE)
+        og::draw_line(tx, ty+len, tx+len, ty+len, og::colors::WHITE)
+
+        let c = g.g[cx][cy]
+        if og::is_key_pressed(og::Key::Left) {
+            if c - 7 >= 0 {
+                c -= 7
+            }
+        }
+        if og::is_key_pressed(og::Key::Right) {
+            if c + 7 < NUM_COLS {
+                c += 7
+            }
+        }
+        if og::is_key_pressed(og::Key::Up) {
+            if c % 7 != 6 and c + 1 < NUM_COLS {
+                c += 1
+            }
+        }
+        if og::is_key_pressed(og::Key::Down) {
+            if c % 7 != 0 and c - 1 >= 0 {
+                c -= 1
+            }
+        }
+
+        let scroll = og::get_mouse_scroll().y
+        if scroll != 0 {
+            c = ((c + NUM_COLS) as i32 + scroll) as i32 % NUM_COLS
+        }
+
+        if og::is_mouse_pressed(Left) {
+            if c > 0 {
+                c = 0
+            } else {
+                c = 6
+            }
+        }
+
+        g.g[cx][cy] = c
+
+    }
+
+    if og::is_key_pressed(og::Key::S) {
+        save_file(g, img_file)
+    }
+}
+
+def main(argc: i32, argv: &str) {
+    if argc < 2 {
+        println("Usage: make_image <image_file>")
+        std::exit(1)
+    }
+
+    let img_file = argv[1]
+
+    let g: Graph
+    if fs::file_exists(img_file) {
+        read_file(img_file, &g)
+    }
+
+    og::init(1600, 500, "Viz")
+
+    while og::is_running() {
+        if og::is_key_pressed(og::Key::Escape) {
+            break
+        }
+        ui(&g, img_file)
+    }
+}

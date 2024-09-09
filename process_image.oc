@@ -1,0 +1,96 @@
+import std::time
+import std::fs
+
+struct Graph {
+    g: [[u32; 7]; 52]
+}
+
+def reset_repo() {
+    std::libc::system("rm -rf repo")
+    std::libc::system("mkdir repo")
+    std::libc::system("cd repo && git init")
+    std::libc::system("cd repo && git config user.email \"180790237+ghgraphcolordraw@users.noreply.github.com\"")
+    std::libc::system("cd repo && git config user.name \"ghgraphcolordraw\"")
+}
+
+def make_commits(g: &Graph) {
+    let time_buf: [char; 64]
+    let timer = time::time(null)
+    let tm_info = time::localtime(&timer)
+    // want year-month-day hour:minutes:seconds
+    let log_time_format: str = "%Y-%m-%d %H:%M:%S"
+    time::strftime(time_buf, 64, log_time_format, tm_info)
+    println(`({time_buf}) , wday: {tm_info.tm_wday}, mday: {tm_info.tm_mday}`)
+
+    // find the next saturday
+    let days_to_saturday = (6i32 - tm_info.tm_wday)
+    tm_info.tm_mday += days_to_saturday as i32
+
+    for let i = 0; i < 52; i += 1 {
+        for let j = 0; j < 7; j += 1 {
+            let doff = (7-j-1)
+            let day_delta = ((52-i) * 7) + doff
+            let current_tm_info = *tm_info
+            current_tm_info.tm_mday -= day_delta as i32
+
+            let commit_time = time::mktime(&current_tm_info)
+            time::strftime(time_buf, 64, log_time_format, &current_tm_info)
+            for let x = 0; x < g.g[i][j]; x += 1 {
+                std::libc::system(`cd repo && git commit -m "{i}-{j}-{x}" --date "{time_buf}" --allow-empty`)
+            }
+        }
+    }
+}
+
+def push_repo() {
+    std::libc::system("cd repo && git remote add origin git@github.com:ghgraphcolordraw/testing.git")
+    std::libc::system("cd repo && git push -u origin main --force")
+}
+
+def read_file(fname: str, g: &Graph) {
+    let sv = fs::read_file(fname).sv()
+    for let j = 0; j < 7; j++ {
+        let line = sv.chop_line()
+        for let i = 0; i < 52; i++ {
+            g.g[i][j] = line.chop_u32()
+        }
+    }
+}
+
+def print_graph(g: &Graph) {
+    for let j = 0; j < 7; j++ {
+        for let i = 0; i < 52; i++ {
+            let c = g.g[i][j]
+            if c == 0 {
+                print(" ")
+            } else {
+                print(`{c}`)
+            }
+        }
+        println("")
+    }
+}
+
+def main(argc: i32, argv: &str) {
+    if argc < 2 {
+        println("Usage: process_image <image_file>")
+        std::exit(1)
+    }
+
+    let img_file = argv[1]
+
+    if not fs::file_exists(img_file) {
+        println(f"File `{img_file}` not found")
+        std::exit(1)
+    }
+
+    let g: Graph
+    read_file(img_file, &g)
+
+    reset_repo()
+    make_commits(&g)
+
+    if argc == 3 and (argv[2].eq("--push")) {
+        push_repo()
+    }
+}
